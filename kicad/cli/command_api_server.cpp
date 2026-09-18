@@ -382,7 +382,29 @@ int CLI::API_SERVER_COMMAND::doPerform( KIWAY& aKiway )
 
         wxFileName docFile( inputPath );
         docFile.MakeAbsolute();
-        openDocuments.push_back( { requestType, docFile.GetFullName(), LIB_ID() } );
+
+        // For DOCTYPE_PCB, the client may have supplied any of the
+        // documented input forms (.kicad_pro, .kicad_pcb, or a bare project
+        // path) -- API_HANDLER_PCB::validateDocumentInternal() below
+        // compares board_filename against the *actually loaded* board's
+        // filename (context()->GetCurrentFileName(), always .kicad_pcb,
+        // derived from HandleApiOpenDocument's own boardPath). Tracking and
+        // reporting anything other than that same normalized .kicad_pcb
+        // name here (e.g. the raw .kicad_pro name when that's what the
+        // client passed) makes every later item-level request against this
+        // document fail that comparison and silently downgrade to
+        // AS_UNHANDLED -- "no handler available" at the client, with no
+        // indication the mismatch is the actual cause. Schematic's
+        // equivalent check compares project identity, not a raw filename,
+        // so this specific failure mode is PCB-only.
+        wxFileName pcbFileName( docFile );
+        if( requestType == types::DOCTYPE_PCB )
+        {
+            pcbFileName = projectPath;
+            pcbFileName.SetExt( FILEEXT::KiCadPcbFileExtension );
+        }
+
+        openDocuments.push_back( { requestType, pcbFileName.GetFullName(), LIB_ID() } );
         openProjectPath = projectPath;
 
         commands::OpenDocumentResponse response;
@@ -393,7 +415,7 @@ int CLI::API_SERVER_COMMAND::doPerform( KIWAY& aKiway )
 
         if( requestType == types::DOCTYPE_PCB )
         {
-            doc->set_board_filename( docFile.GetFullName().ToStdString() );
+            doc->set_board_filename( pcbFileName.GetFullName().ToStdString() );
         }
         doc->mutable_project()->set_name( project.GetProjectName().ToUTF8() );
         doc->mutable_project()->set_path( project.GetProjectDirectory().ToUTF8() );
