@@ -53,9 +53,23 @@ HANDLER_RESULT<BeginCommitResponse> API_HANDLER_EDITOR::handleBeginCommit(
     if( std::optional<ApiResponseStatus> busy = checkForBusy() )
         return tl::unexpected( *busy );
 
-    // Before 11.0, commit requests had no header so we assume they are for the PCB editor
-    if( aCtx.Request.has_header() && !validateItemHeaderDocument( aCtx.Request.header() ) )
+    if( aCtx.Request.has_header() )
     {
+        if( !validateItemHeaderDocument( aCtx.Request.header() ) )
+        {
+            ApiResponseStatus e;
+            // No message needed for AS_UNHANDLED; this is an internal flag for the API server
+            e.set_status( ApiStatusCode::AS_UNHANDLED );
+            return tl::unexpected( e );
+        }
+    }
+    else if( thisDocumentType() != types::DOCTYPE_PCB )
+    {
+        // Before 11.0, commit requests had no header, so a header-less request is assumed
+        // to be for the PCB editor specifically -- not "whichever handler happens to see it
+        // first" (API_SERVER's dispatch order is a std::set<API_HANDLER*> keyed by pointer
+        // value, not document-open order, so that would be dispatch-order-dependent and
+        // silently misroute a header-less commit to a non-PCB document's handler).
         ApiResponseStatus e;
         // No message needed for AS_UNHANDLED; this is an internal flag for the API server
         e.set_status( ApiStatusCode::AS_UNHANDLED );
@@ -91,9 +105,20 @@ HANDLER_RESULT<EndCommitResponse> API_HANDLER_EDITOR::handleEndCommit(
     if( std::optional<ApiResponseStatus> busy = checkForBusy() )
         return tl::unexpected( *busy );
 
-    // Before 11.0, commit requests had no header so we assume they are for the PCB editor
-    if( aCtx.Request.has_header() && !validateItemHeaderDocument( aCtx.Request.header() ) )
+    if( aCtx.Request.has_header() )
     {
+        if( !validateItemHeaderDocument( aCtx.Request.header() ) )
+        {
+            ApiResponseStatus e;
+            // No message needed for AS_UNHANDLED; this is an internal flag for the API server
+            e.set_status( ApiStatusCode::AS_UNHANDLED );
+            return tl::unexpected( e );
+        }
+    }
+    else if( thisDocumentType() != types::DOCTYPE_PCB )
+    {
+        // See the matching comment in handleBeginCommit: a header-less EndCommit must not
+        // be claimed by a non-PCB handler just because dispatch tried it first.
         ApiResponseStatus e;
         // No message needed for AS_UNHANDLED; this is an internal flag for the API server
         e.set_status( ApiStatusCode::AS_UNHANDLED );
