@@ -1,8 +1,6 @@
 # Backplane KiCad
 
-- Use `gpt-5.6-luna` subagents for most bounded implementation, investigation, and review tasks. The primary agent integrates and verifies the result.
-- New commits must use author and committer `i2cjak <build@amemb.com>`. Verify `git var GIT_AUTHOR_IDENT` and `git var GIT_COMMITTER_IDENT` before committing.
-- Before every push, verify the authenticated account is `i2cjak`, the destination is the public `i2cjak/Backplane_KiCad` repository, and review the outgoing commits, diff, and relevant checks. Preserve upstream commit identities and history.
+- This is a personal fork (`shanedertrain/Backplane_KiCad`) of upstream `i2cjak/Backplane_KiCad`. Commits here use the fork owner's own git identity, never upstream's. Before pushing, verify the destination is this fork, not upstream.
 - Base changes on stable KiCad releases. Keep IPC backports focused, record their upstream revisions, and verify both schematic and PCB behavior. Never label an untested backport a working runtime.
 - Preserve file compatibility with unmodified KiCad 10.0.6. Do not raise native file-format versions or emit newer unsupported tokens. Store fork-only metadata in adjacent `.backplane.json` companions, preserve those companions through save/copy/export staging, and verify native save/reopen with stock 10.0.6 before releasing.
 - This repository and corresponding source for distributed binaries must remain public. Preserve upstream licenses, authorship, and third-party notices. Ship licenses and matching source with release binaries.
