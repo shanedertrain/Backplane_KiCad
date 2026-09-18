@@ -201,6 +201,16 @@ HANDLER_RESULT<bool> API_HANDLER_EDITOR::validateDocument( const DocumentSpecifi
 HANDLER_RESULT<std::optional<KIID>> API_HANDLER_EDITOR::validateItemHeaderDocument(
         const types::ItemHeader& aHeader )
 {
+    if( api_handler_debug::enabled() )
+    {
+        std::fprintf( stderr,
+                      "[api-handler-debug] validateItemHeaderDocument: has_document=%d "
+                      "document.type=%d thisDocumentType=%d has_container=%d\n",
+                      aHeader.has_document(), aHeader.has_document() ? (int) aHeader.document().type() : -1,
+                      (int) thisDocumentType(), aHeader.has_container() );
+        std::fflush( stderr );
+    }
+
     if( !aHeader.has_document() || aHeader.document().type() != thisDocumentType() )
     {
         ApiResponseStatus e;
@@ -210,6 +220,13 @@ HANDLER_RESULT<std::optional<KIID>> API_HANDLER_EDITOR::validateItemHeaderDocume
     }
 
     HANDLER_RESULT<bool> documentValidation = validateDocument( aHeader.document() );
+
+    if( api_handler_debug::enabled() )
+    {
+        std::fprintf( stderr, "[api-handler-debug] validateDocument: %s\n",
+                      documentValidation.has_value() ? "OK" : "FAILED" );
+        std::fflush( stderr );
+    }
 
     if( !documentValidation )
         return tl::unexpected( documentValidation.error() );

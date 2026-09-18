@@ -39,6 +39,7 @@ API_RESULT API_HANDLER::Handle( ApiRequest& aMsg )
     }
 
     std::string typeName;
+    bool debugOn = api_handler_debug::enabled();
 
     if( !google::protobuf::Any::ParseAnyTypeUrl( aMsg.message().type_url(), &typeName ) )
     {
@@ -47,7 +48,31 @@ API_RESULT API_HANDLER::Handle( ApiRequest& aMsg )
         return tl::unexpected( status );
     }
 
+    if( debugOn )
+    {
+        std::string typeUrl = aMsg.message().type_url();
+        std::fprintf( stderr,
+                      "[api-handler-debug] Handle: this=%p &m_handlers=%p size=%zu "
+                      "typeUrl=\"%s\" lookupKey=\"%s\" lookupKeyLen=%zu lookupKeyHex=%s\n",
+                      static_cast<void*>( this ), static_cast<void*>( &m_handlers ), m_handlers.size(),
+                      typeUrl.c_str(), typeName.c_str(), typeName.size(),
+                      api_handler_debug::hexBytes( typeName ).c_str() );
+        for( const auto& [key, unused] : m_handlers )
+        {
+            std::fprintf( stderr, "[api-handler-debug]   key=\"%s\" keyLen=%zu keyHex=%s\n",
+                          key.c_str(), key.size(), api_handler_debug::hexBytes( key ).c_str() );
+        }
+        std::fflush( stderr );
+    }
+
     auto it = m_handlers.find( typeName );
+
+    if( debugOn )
+    {
+        std::fprintf( stderr, "[api-handler-debug] Handle: find() %s\n",
+                      ( it != m_handlers.end() ) ? "SUCCESS" : "FAILED" );
+        std::fflush( stderr );
+    }
 
     if( it != m_handlers.end() )
     {

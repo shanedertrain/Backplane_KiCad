@@ -21,6 +21,8 @@
 #ifndef KICAD_API_HANDLER_H
 #define KICAD_API_HANDLER_H
 
+#include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <optional>
 
@@ -38,6 +40,34 @@
 
 using kiapi::common::ApiRequest, kiapi::common::ApiResponse;
 using kiapi::common::ApiResponseStatus, kiapi::common::ApiStatusCode;
+
+// Temporary diagnostic instrumentation for the PCB headless IPC handler-gap
+// investigation (Albatross Automata hardware repo, kicad-agent-phase2).
+// Opt-in only via KICAD_API_DEBUG_HANDLERS=1 so normal builds/logs are
+// unaffected. Remove once the root cause is fixed and covered by a
+// regression test, or keep permanently gated behind this env var if it
+// proves generally useful for future handler-registration bugs.
+namespace api_handler_debug
+{
+inline bool enabled()
+{
+    static const bool value = ( std::getenv( "KICAD_API_DEBUG_HANDLERS" ) != nullptr );
+    return value;
+}
+
+inline std::string hexBytes( const std::string& aStr )
+{
+    std::string out;
+    out.reserve( aStr.size() * 3 );
+    for( unsigned char c : aStr )
+    {
+        char buf[4];
+        std::snprintf( buf, sizeof( buf ), "%02x ", c );
+        out += buf;
+    }
+    return out;
+}
+} // namespace api_handler_debug
 
 typedef tl::expected<ApiResponse, ApiResponseStatus> API_RESULT;
 
@@ -95,6 +125,17 @@ protected:
     {
         std::string typeName { RequestType().GetTypeName() };
 
+        if( api_handler_debug::enabled() )
+        {
+            size_t sizeBefore = m_handlers.size();
+            std::fprintf( stderr,
+                          "[api-handler-debug] registerHandler: handlerThis=%p &m_handlers=%p "
+                          "sizeBefore=%zu key=\"%s\" keyLen=%zu keyHex=%s\n",
+                          static_cast<void*>( this ), static_cast<void*>( &m_handlers ), sizeBefore,
+                          typeName.c_str(), typeName.size(), api_handler_debug::hexBytes( typeName ).c_str() );
+            std::fflush( stderr );
+        }
+
         wxASSERT_MSG( !m_handlers.contains( typeName ),
                       wxString::Format( "Duplicate API handler for type %s", typeName ) );
 
@@ -123,6 +164,13 @@ protected:
                         return tl::unexpected( response.error() );
                     }
                 };
+
+        if( api_handler_debug::enabled() )
+        {
+            std::fprintf( stderr, "[api-handler-debug] registerHandler: sizeAfter=%zu for key=\"%s\"\n",
+                          m_handlers.size(), typeName.c_str() );
+            std::fflush( stderr );
+        }
     }
 
     /// Maps type name (without the URL prefix) to a handler method
